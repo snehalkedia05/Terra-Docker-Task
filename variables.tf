@@ -7,6 +7,5 @@ variable "vpc_cidr" {
 }
 
 variable "key_pair_name" {
-  description = "Your AWS EC2 key pair name"
-  default     = "your-keypair-name" # ← change this to your key name
+  description = "Name of the EC2 Key Pair"
 }

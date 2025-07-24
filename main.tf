@@ -2,6 +2,7 @@ provider "aws" {
   region = var.aws_region
 }
 
+# VPC
 resource "aws_vpc" "main" {
   cidr_block = var.vpc_cidr
   tags = {
@@ -9,6 +10,7 @@ resource "aws_vpc" "main" {
   }
 }
 
+# Internet Gateway
 resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.main.id
   tags = {
@@ -47,24 +49,25 @@ resource "aws_route_table" "public" {
   }
 }
 
-# Route to Internet
+# Internet Route
 resource "aws_route" "internet_access" {
   route_table_id         = aws_route_table.public.id
   destination_cidr_block = "0.0.0.0/0"
   gateway_id             = aws_internet_gateway.igw.id
 }
 
-# Associate Route Table with Public Subnets
+# Associate Public Subnets with Route Table
 resource "aws_route_table_association" "public_assoc" {
-  count = 3
+  count          = 3
   subnet_id      = aws_subnet.public[count.index].id
   route_table_id = aws_route_table.public.id
 }
 
 # Security Group
 resource "aws_security_group" "web_sg" {
-  name   = "web-sg"
-  vpc_id = aws_vpc.main.id
+  name        = "web-sg"
+  description = "Allow SSH, HTTP, and port 8080"
+  vpc_id      = aws_vpc.main.id
 
   ingress {
     from_port   = 22
@@ -95,13 +98,13 @@ resource "aws_security_group" "web_sg" {
   }
 
   tags = {
-    Name = "allow-ssh-http-8080"
+    Name = "web-sg"
   }
 }
 
 # EC2 Instance
 resource "aws_instance" "ubuntu" {
-  ami                    = "ami-0c7217cdde317cfec" # Ubuntu 22.04 LTS us-east-1
+  ami                    = "ami-0c7217cdde317cfec" # Ubuntu 22.04 LTS (us-east-1)
   instance_type          = "t2.micro"
   subnet_id              = aws_subnet.public[0].id
   vpc_security_group_ids = [aws_security_group.web_sg.id]
