@@ -1,75 +1,58 @@
 provider "aws" {
-  region = var.aws_region
+  region = "us-east-1"
 }
 
-# VPC
 resource "aws_vpc" "main" {
-  cidr_block = var.vpc_cidr
+  cidr_block = "10.0.0.0/16"
+
   tags = {
     Name = "main-vpc"
   }
 }
 
-# Internet Gateway
-resource "aws_internet_gateway" "igw" {
-  vpc_id = aws_vpc.main.id
-  tags = {
-    Name = "main-igw"
-  }
-}
-
-# Public Subnets
-resource "aws_subnet" "public" {
-  count = 3
+resource "aws_subnet" "main" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.${count.index}.0/24"
-  availability_zone       = "us-east-1${["a", "b", "c"][count.index]}"
+  cidr_block              = "10.0.1.0/24"
   map_public_ip_on_launch = true
+
   tags = {
-    Name = "public-subnet-${count.index}"
+    Name = "main-subnet"
   }
 }
 
-# Private Subnets
-resource "aws_subnet" "private" {
-  count = 3
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = "10.0.${count.index + 10}.0/24"
-  availability_zone = "us-east-1${["a", "b", "c"][count.index]}"
-  tags = {
-    Name = "private-subnet-${count.index}"
-  }
-}
-
-# Route Table for Public Subnets
-resource "aws_route_table" "public" {
+resource "aws_internet_gateway" "gw" {
   vpc_id = aws_vpc.main.id
+
   tags = {
-    Name = "public-rt"
+    Name = "main-gw"
   }
 }
 
-# Internet Route
-resource "aws_route" "internet_access" {
-  route_table_id         = aws_route_table.public.id
-  destination_cidr_block = "0.0.0.0/0"
-  gateway_id             = aws_internet_gateway.igw.id
+resource "aws_route_table" "main" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.gw.id
+  }
+
+  tags = {
+    Name = "main-route-table"
+  }
 }
 
-# Associate Public Subnets with Route Table
-resource "aws_route_table_association" "public_assoc" {
-  count          = 3
-  subnet_id      = aws_subnet.public[count.index].id
-  route_table_id = aws_route_table.public.id
+resource "aws_route_table_association" "a" {
+  subnet_id      = aws_subnet.main.id
+  route_table_id = aws_route_table.main.id
 }
 
-# Security Group
-resource "aws_security_group" "web_sg" {
-  name        = "web-sg"
-  description = "Allow SSH, HTTP, and port 8080"
+resource "aws_security_group" "allow_ssh" {
+  name        = "allow_ssh"
+  description = "Allow SSH and HTTP"
   vpc_id      = aws_vpc.main.id
 
   ingress {
+    description = "Allow SSH"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
@@ -77,15 +60,9 @@ resource "aws_security_group" "web_sg" {
   }
 
   ingress {
+    description = "Allow HTTP"
     from_port   = 80
     to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    from_port   = 8080
-    to_port     = 8080
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -98,17 +75,17 @@ resource "aws_security_group" "web_sg" {
   }
 
   tags = {
-    Name = "web-sg"
+    Name = "allow-ssh"
   }
 }
 
-# EC2 Instance
-resource "aws_instance" "ubuntu" {
-  ami                    = "ami-0c7217cdde317cfec" # Ubuntu 22.04 LTS (us-east-1)
-  instance_type          = "t2.micro"
-  subnet_id              = aws_subnet.public[0].id
-  vpc_security_group_ids = [aws_security_group.web_sg.id]
-  key_name               = var.key_pair_name
+resource "aws_instance" "ubuntu_instance" {
+  ami                         = "ami-053b0d53c279acc90" # Ubuntu 22.04 LTS (us-east-1)
+  instance_type               = "t2.micro"
+  subnet_id                   = aws_subnet.main.id
+  vpc_security_group_ids      = [aws_security_group.allow_ssh.id]
+  associate_public_ip_address = true
+  key_name                    = "newk"
 
   tags = {
     Name = "ubuntu-ec2"
