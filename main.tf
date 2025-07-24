@@ -95,7 +95,7 @@ resource "aws_security_group" "web_sg" {
 }
 
 resource "aws_instance" "ubuntu_instance" {
-  ami                    = "ami-0c55b159cbfafe1f0"  # Replace with valid Ubuntu AMI in your region
+  ami                    = ""ami-053b0d53c279acc90" "  # Replace with valid Ubuntu AMI in your region
   instance_type          = "t2.micro"
   subnet_id              = aws_subnet.public[0].id
   vpc_security_group_ids = [aws_security_group.web_sg.id]
